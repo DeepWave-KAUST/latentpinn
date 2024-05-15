@@ -1,10 +1,6 @@
-![LOGO](https://github.com/DeepWave-KAUST/latentpinnn-dev/blob/main/asset/latentpinn.png)
+![LOGO](https://github.com/DeepWave-KAUST/latentpinn/blob/main/asset/latentpinn.png)
 
-:vertical_traffic_light: A copy of this repository has been made public at [LINK](https://github.com/DeepWave-KAUST/latentpinn). All future developments will be initially made available to sponsors in this repository. :vertical_traffic_light:
-
-Reproducible material for **DW0037 - Mohammad H. Taufik, Xinquan Huang, Tariq Alkhalifah.**
-
-[Click here](https://kaust.sharepoint.com/:f:/r/sites/M365_Deepwave_Documents/Shared%20Documents/Restricted%20Area/DW0037?csf=1&web=1&e=fHFEeB) to access the Project Report. Authentication to the _Restricted Area_ filespace is required.
+Reproducible material for **Multiple Wavefield Solutions in Physics-Informed Neural Networks using Latent Representation - Mohammad H. Taufik, Xinquan Huang, Tariq Alkhalifah.**
 
 # Project structure
 This repository is organized as follows:
