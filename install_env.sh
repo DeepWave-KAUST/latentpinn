@@ -13,12 +13,11 @@ conda env create -f environment.yml
 conda activate latentpinn
 
 pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu117
-pip3 install -e git+https://github.com/CompVis/taming-transformers.git@master#egg=taming-transformers
-pip3 install -e git+https://github.com/openai/CLIP.git@main#egg=clip
-pip3 install -e git+https://github.com/CompVis/latent-diffusion.git@main#egg=latent-diffusion
 
 # Install latentpinn package
 pip3 install -e . --use-pep517
+pip3 install pytorch-lightning
+pip3 install ptflops
 
 conda env list
 echo 'Created and activated environment:' $(which python)

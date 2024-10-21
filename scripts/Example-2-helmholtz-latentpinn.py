@@ -47,7 +47,7 @@ def main():
     layers = [27+LATENT_DIM, 64, 64, 32, 32, 16, 16, 8, 8, 2]
 
     # Load analytical wavefield solutions
-    test_data = h5py.File('../scripts/smooth5mix_reseam_4Hz_test_data_NS40000_NV2000_128.mat')
+    test_data = h5py.File('../data/smooth5mix_reseam_4Hz_test_data_NS40000_NV2000_128.mat')
     
     dU_real_star = test_data['dU_real_star'][()].T.reshape(NUM_TRAIN_VEL,-1,1)
     dU_imag_star = test_data['dU_imag_star'][()].T.reshape(NUM_TRAIN_VEL,-1,1)
@@ -57,7 +57,7 @@ def main():
     z_star = test_data['z_star'][()].T.reshape(-1,1)
     sx_star = test_data['sx_star'][()].T.reshape(-1,1)
 
-    train_data = h5py.File('../scripts/smooth5mix_reseam_4Hz_train_data_NS40000_NV2000_128.mat')
+    train_data = h5py.File('../data/smooth5mix_reseam_4Hz_train_data_NS40000_NV2000_128.mat')
 
     u0_real_train_all = train_data['U0_real_train'][()].T.reshape(NUM_TRAIN_VEL,-1,1)
     u0_imag_train_all = train_data['U0_imag_train'][()].T.reshape(NUM_TRAIN_VEL,-1,1)
@@ -138,7 +138,7 @@ def main():
     NUM_TEST_VEL = 80
 
     # Load analytical wavefield solutions
-    marm_data = h5py.File('../scripts/smooth5mix_marm_4Hz_test_data_NS40000_NV80_128.mat')
+    marm_data = h5py.File('../data/smooth5mix_marm_4Hz_test_data_NS40000_NV80_128.mat')
 
     dU_real_star = marm_data['dU_real_star'][()].T.reshape(NUM_TEST_VEL,-1,1)
     dU_imag_star = marm_data['dU_imag_star'][()].T.reshape(NUM_TEST_VEL,-1,1)
@@ -155,8 +155,8 @@ def main():
     dU_imag_test = dU_imag_star.reshape(-1,9,128,128)[idxs,s_idxs,:,:]#[-25:]
     dU_real_pred_pinn, dU_imag_pred_pinn, dU_real_error_pinn, dU_imag_error_pinn = np.ones_like(v_test),np.ones_like(v_test),np.ones_like(v_test),np.ones_like(v_test)
 
-    lb = torch.FloatTensor(torch.load('../saves/result.tz')['lb']).cuda()
-    ub = torch.FloatTensor(torch.load('../saves/result.tz')['ub']).cuda()
+    lb = torch.FloatTensor(torch.load('../saves/marine_128/result.tz')['lb']).cuda()
+    ub = torch.FloatTensor(torch.load('../saves/marine_128/result.tz')['ub']).cuda()
 
     marm_latent = torch.from_numpy(np.load('../saves/marine_128/latent_'+str(LATENT_DIM)+'/marm_latent_'+str(LATENT_DIM)+'.npy')).cuda()
     marm_latent = train_latent/abs(marm_latent).max()
