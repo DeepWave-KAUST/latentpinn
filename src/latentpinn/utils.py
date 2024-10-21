@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import random, os
 import torch.nn.functional as F
 import math
+from torch.utils.data.dataset import *
 
 from torch.autograd import grad
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -234,6 +235,63 @@ class FastTensorDataLoader:
 
     def __len__(self):
         return self.n_batches
+    
+
+def create_dataloader2dmodeling(
+    input_vec,
+    sx,
+    sz,
+    batch_size=200**4,
+    shuffle=True,
+    device="cuda",
+    fast_loader="n",
+    perm_id=None,
+):
+
+    # input_wsrc = [X, Y, Z, SX+len(id_sou), SY+len(id_sou), SZ+len(id_sou), T0, px0, py0, pz0, index]
+
+    XZ = torch.from_numpy(np.vstack(list(input_vec[:2])).T).float().to(device)
+    SX = torch.from_numpy(input_vec[2]).float().to(device)
+    SZ = torch.from_numpy(input_vec[3]).float().to(device)
+
+    tana = torch.from_numpy(input_vec[4]).float().to(device)
+    tana_dx = torch.from_numpy(input_vec[5]).float().to(device)
+    tana_dz = torch.from_numpy(input_vec[6]).float().to(device)
+
+    index = torch.from_numpy(input_vec[7]).float().to(device)
+
+    if perm_id is not None:
+        dataset = TensorDataset(
+            XZ[perm_id],
+            SX[perm_id],
+            SZ[perm_id],
+            tana[perm_id],
+            tana_dx[perm_id],
+            tana_dz[perm_id],
+            index[perm_id],
+        )
+    else:
+        dataset = TensorDataset(XZ, SX, SZ, tana, tana_dx, tana_dz, index)
+
+    if fast_loader:
+        data_loader = FastTensorDataLoader(
+            XZ,
+            SX,
+            SZ,
+            tana,
+            tana_dx,
+            tana_dz,
+            index,
+            batch_size=batch_size,
+            shuffle=shuffle,
+        )
+    else:
+        data_loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
+
+    # initial condition
+    ic = torch.tensor(np.array([sx, sz]), dtype=torch.float).to(device)
+
+    return data_loader, ic.T
 
 
 def torch_to_numpy(x, nx=None, nz=None, ns=None):
@@ -348,3 +406,95 @@ def error_l2(du_real, du_imag, du_real_ref, du_imag_ref):
     error_du_real = np.linalg.norm(du_real-du_real_ref,2)/np.linalg.norm(du_real_ref,2)
     error_du_imag = np.linalg.norm(du_imag-du_imag_ref,2)/np.linalg.norm(du_imag_ref,2)
     return error_du_real, error_du_imag
+
+def get_images(num, dataset, delta=500):
+    return torch.stack([dataset[i][0] for i in range(0,delta*num,delta)], dim=0).unsqueeze(1)
+
+def compare_imgs(img1, img2, title_prefix=""):
+    # Calculate MSE loss between both images
+    loss = F.mse_loss(img1, img2, reduction="sum")
+    # Plot images for visual comparison
+    grid = torchvision.utils.make_grid(torch.stack([img1, img2], dim=0), nrow=2, normalize=True, range=(-1,1))
+    grid = grid.permute(1, 2, 0)
+    plt.figure(figsize=(4,2))
+    plt.title(f"{title_prefix} Loss: {loss.item():4.2f}")
+    plt.imshow(grid)
+    plt.axis('off')
+    plt.show()
+
+def visualize_reconstructions(model, input_imgs):
+    # Reconstruct images
+    model.eval()
+    with torch.no_grad():
+        reconst_imgs = model(input_imgs.to(model.device))
+    reconst_imgs = reconst_imgs.cpu()
+    
+    # Plotting
+    imgs = input_imgs
+    inp_images = torchvision.utils.make_grid(imgs, nrow=8, normalize=True, range=(-1,1))
+    inp_images = inp_images.permute(1, 2, 0)
+    
+    imgs = reconst_imgs
+    out_images = torchvision.utils.make_grid(imgs, nrow=8, normalize=True, range=(-1,1))
+    out_images = out_images.permute(1, 2, 0)
+    
+    plt.figure()
+    plt.imshow(inp_images)
+    plt.axis('off')
+    plt.xlabel('Input')
+    plt.savefig(CHECKPOINT_PATH+'/input.png')
+    plt.show()
+    
+    
+    plt.figure()
+    plt.imshow(out_images)
+    plt.axis('off')
+    plt.xlabel('Output')
+    plt.savefig(CHECKPOINT_PATH+'/output.png')
+    plt.show()
+    
+def set_seed(seed):
+
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    
+def set_device():
+
+    device = "cpu"
+    if torch.cuda.device_count() > 0 and torch.cuda.is_available():
+        print("Cuda installed! Running on GPU!")
+        device = torch.device(torch.cuda.current_device())
+        print(f"Device: {device} {torch.cuda.get_device_name(device)}")
+    else:
+        print("No GPU available!")
+    return device
+
+
+def init_weights(
+    m,
+    init_type="xavierUniform",
+    bias=0.1,
+    mean=0.0,
+    std=1.0,
+):
+
+    if isinstance(m, nn.Linear):
+        if init_type == "xavierUniform":
+            torch.nn.init.xavier_uniform_(m.weight)
+        elif init_type == "xavierNormal":
+            torch.nn.init.xavier_normal_(m.weight)
+        elif init_type == "kaimingUniform":
+            torch.nn.init.kaiming_uniform_(m.weight)
+        elif init_type == "normal":
+            m.weight.data.normal_(mean, std)
+        elif init_type == "uniform":
+            m.weight.data.uniform_(-2.0, 15.0)
+        m.bias.data.fill_(bias)
+        
+def normalize(array, vmax, vmin):
+    return 2 * (array - vmin) / (vmax - vmin) - 1
+
+def denormalize(array, vmax, vmin):
+    return 0.5 * (array + 1) * (vmax - vmin) + vmin

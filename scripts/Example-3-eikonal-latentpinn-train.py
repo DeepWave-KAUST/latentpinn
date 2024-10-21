@@ -40,7 +40,7 @@ def main():
     train_latent = torch.from_numpy(np.load('../saves/train_latent_12.npy')).cuda()
     train_latent = train_latent/abs(train_latent).max()
 
-    train_vel = loadmat('../data/reseam_train_vel.mat')['vel_train']#np.load('../data/train_vel_reseam.npy')[:,::2,::2][:,:101,:101]
+    train_vel = loadmat('../data/reseam_train_vel.mat')['vel_train']
 
     train_vel = torch.from_numpy(resize(train_vel[:,:,:], (34000,128,128)))
     
@@ -221,7 +221,7 @@ def main():
     test_latent = torch.from_numpy(np.load('../saves/test_latent_12.npy')).cuda()
     test_latent = test_latent/abs(test_latent).max()
 
-    test_vel = loadmat('../data/reseam_test_vel.mat')['vel_train']#np.load('../data/test_vel_reseam.npy')[:,::2,::2][:,:101,:101]
+    test_vel = loadmat('../data/reseam_test_vel.mat')['vel_train']
 
     test_vel = torch.from_numpy(resize(test_vel[:,:,:], (1000,128,128)))
     sim_idx = torch.arange(64*10)[::10].reshape(8,8) #torch.load(wandb_dir+'/reseam_similar_idx.pt').to(int)[:100,:8]
@@ -298,53 +298,49 @@ def main():
     plot_square_image(v_preds, 8,8, save_dir=wandb_dir, name='v_pred_8x8.pdf')
     
     np.save(wandb_dir+'v_true.npy', v_trues)
-    np.save(wandb_dir+'v_pred_gptpinn.npy', v_preds_gptpinn)
-    np.save(wandb_dir+'T_pred_gptpinn.npy', T_preds_gptpinn)
+    np.save(wandb_dir+'v_pred.npy', v_preds)
+    np.save(wandb_dir+'T_pred.npy', T_preds)
     
     # Evalutaion metrics
-    v_rmse_pinn = []
-    v_rmse_gptpinn = []
-    v_ssim_pinn = []
-    v_ssim_gptpinn = []
+    v_rmse = []
+    v_ssim = []
     
-    T_rmse_pinn = []
-    T_rmse_gptpinn = []
-    T_ssim_pinn = []
-    T_ssim_gptpinn = []
+    T_rmse = []
+    T_ssim = []
     
     # Remove NaNs
-    v_preds_gptpinn[:,:,64,64] = 0
+    v_preds[:,:,64,64] = 0
     v_trues[:,:,64,64] = 0
     
-    T_preds_gptpinn[:,:,64,64] = 0
-    T_trues[:,:,64,64] = 0
+    T_preds[:,:,64,64] = 0
+    T_datas[:,:,64,64] = 0
     
     for i in range(8):
         for j in range(8):
-            v_rmse_gptpinn.append(rmse(org_img=v_trues[i,j].reshape(1,128,128), pred_img=v_preds_gptpinn[i,j].reshape(1,128,128)))
-            v_ssim_gptpinn.append(ssim(org_img=v_trues[i,j].reshape(1,128,128), pred_img=v_preds_gptpinn[i,j].reshape(1,128,128)))
+            v_rmse.append(rmse(org_img=v_trues[i,j].reshape(1,128,128), pred_img=v_preds[i,j].reshape(1,128,128)))
+            v_ssim.append(ssim(org_img=v_trues[i,j].reshape(1,128,128), pred_img=v_preds[i,j].reshape(1,128,128)))
             
-            T_rmse_gptpinn.append(rmse(org_img=T_trues[i,j].reshape(1,128,128), pred_img=T_preds_gptpinn[i,j].reshape(1,128,128)))
-            T_ssim_gptpinn.append(ssim(org_img=T_trues[i,j].reshape(1,128,128), pred_img=T_preds_gptpinn[i,j].reshape(1,128,128)))
+            T_rmse.append(rmse(org_img=T_trues[i,j].reshape(1,128,128), pred_img=T_preds[i,j].reshape(1,128,128)))
+            T_ssim.append(ssim(org_img=T_trues[i,j].reshape(1,128,128), pred_img=T_preds[i,j].reshape(1,128,128)))
     
-    print('Max RMSE-T GPTPINN: ',  np.array([T_rmse_gptpinn]).max())
-    print('Min RMSE-T GPTPINN: ',  np.array([T_rmse_gptpinn]).min())
-    print('Max SSIM-T GPTPINN: ',  np.array([T_ssim_gptpinn]).max())
-    print('Min SSIM-T GPTPINN: ',  np.array([T_ssim_gptpinn]).min())
+    print('Max RMSE-T: ',  np.array([T_rmse]).max())
+    print('Min RMSE-T: ',  np.array([T_rmse]).min())
+    print('Max SSIM-T: ',  np.array([T_ssim]).max())
+    print('Min SSIM-T: ',  np.array([T_ssim]).min())
     
-    np.save(wandb_dir+'v_rmse_ssim.npy', np.array([v_rmse_gptpinn, v_ssim_gptpinn]))
-    np.save(wandb_dir+'T_rmse_ssim.npy', np.array([T_rmse_gptpinn, T_ssim_gptpinn]))
+    np.save(wandb_dir+'v_rmse_ssim.npy', np.array([v_rmse, v_ssim]))
+    np.save(wandb_dir+'T_rmse_ssim.npy', np.array([T_rmse, T_ssim]))
     
     if args.use_wandb=="y":
         wandb.log({
-            "Max v_rmse": np.array([v_rmse_pinn]).max(),
-            "Min v_rmse": np.array([v_rmse_pinn]).min(),
-            "Max v_ssim": np.array([v_ssim_pinn]).max(),
-            "Min v_ssim": np.array([v_ssim_pinn]).min(),
-            "Max T_rmse": np.array([T_rmse_pinn]).max(),
-            "Min T_rmse": np.array([T_rmse_pinn]).min(),
-            "Max T_ssim": np.array([T_ssim_pinn]).max(),
-            "Min T_ssim": np.array([T_ssim_pinn]).min(),
+            "Max v_rmse": np.array([v_rmse]).max(),
+            "Min v_rmse": np.array([v_rmse]).min(),
+            "Max v_ssim": np.array([v_ssim]).max(),
+            "Min v_ssim": np.array([v_ssim]).min(),
+            "Max T_rmse": np.array([T_rmse]).max(),
+            "Min T_rmse": np.array([T_rmse]).min(),
+            "Max T_ssim": np.array([T_ssim]).max(),
+            "Min T_ssim": np.array([T_ssim]).min(),
             "gpt-macs": args.meta_neurons * macs,
             "gpt-flops": args.meta_neurons * flops,
             "gpt-params": args.meta_neurons * params,
